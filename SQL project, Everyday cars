@@ -1,0 +1,180 @@
+-- SQLite simple select fucntion 
+SELECT firstName, lastName, title 
+FROM employee 
+LIMIT 5;
+-- using limits
+SELECT model, EngineType
+FROM model 
+LIMIT 5; 
+
+-- inner joins
+
+SELECT emp.firstName,
+ emp.lastName,
+ emp.title,
+ mpg.firstName AS ManagersFirstName,
+ mpg.lastName AS ManagersLastName
+FROM employee emp
+INNER JOIN employee mpg
+ ON emp.managerId = mpg.employeeId;
+
+-- left join, and employees with 0 sales
+
+SELECT emp.firstName, emp.lastName, emp.title, emp.startDate, sls.salesId 
+FROM employee emp
+LEFT JOIN sales sls 
+ ON emp.employeeId = sls.employeeId 
+WHERE emp.title = 'Sales Person' 
+AND sls.salesId IS NULL;
+
+-- Using outer join, but with union 
+-- displaying all the customers and their sales data 
+
+SELECT cus.firstName, cus.lastName, cus.email, sls.salesAmount, sls.soldDate 
+FROM customer AS cus 
+INNER JOIN sales AS sls 
+  ON cus.customerId = sls.customerId 
+UNION 
+
+-- UNION with customers with no sales 
+SELECT cus.firstName, cus.lastName, cus.email, sls.salesAmount, sls.soldDate 
+FROM customer AS cus 
+LEFT JOIN sales AS sls 
+  ON cus.customerId = sls.customerId 
+WHERE sls.salesId IS NULL 
+UNION 
+
+-- UNION with sales with missing customers data 
+SELECT cus.firstName, cus.lastName, cus.email, sls.salesAmount, sls.soldDate
+FROM sales AS sls 
+LEFT JOIN customer AS cus
+  ON cus.customerId = sls.customerId  
+WHERE sls.salesId IS NULL;
+
+-- How many cars have been sold by each employee 
+
+SELECT emp.employeeId, emp.firstName, emp.lastName 
+FROM sales sls
+INNER JOIN employee emp 
+ ON emp.employeeId = sls.employeeId 
+
+-- add group by and count 
+
+SELECT emp.employeeId, emp.firstName, emp.lastName, count(*) as NumOfCarsSold
+FROM sales sls
+INNER JOIN employee emp 
+ ON emp.employeeId = sls.employeeId 
+GROUP BY emp.employeeId, emp.firstName, emp.lastName
+ORDER BY NumOfCarsSold DESC;
+
+
+-- Finding the least and most expencive cars sold by each employee 
+
+SELECT emp.employeeId, emp.firstName, emp.lastName,
+  MIN(salesAmount) AS MinimumSalesAmount,
+  MAX(salesAmount) AS MaximimSalesAmount 
+FROM sales AS sls 
+INNER JOIN employee AS emp 
+  ON sls.employeeId = emp.employeeId
+WHERE sls.soldDate >= date('now', 'start of year') 
+GROUP BY emp.employeeId, emp.firstName, emp.lastName 
+-- employees who have sold 5 cars or more 
+
+SELECT emp.employeeId, emp.firstName, emp.lastName, count(*) AS NumOfCarsSold,
+  MIN(salesAmount) AS MinimumSalesAmount,
+  MAX(salesAmount) AS MaximimSalesAmount 
+FROM sales AS sls 
+INNER JOIN employee AS emp 
+  ON sls.employeeId = emp.employeeId
+WHERE sls.soldDate >= date('now', 'start of year') 
+GROUP BY emp.employeeId, emp.firstName, emp.lastName 
+HAVING count(*) >= 5 
+
+-- Summarize the slaes per year by using CTE 
+
+WITH cte AS (
+  SELECT strftime( '%Y', soldDate) AS SoldYear,
+  salesAmount
+FROM sales
+)
+SELECT SoldYear,
+  format( "$%.2f", sum(salesAmount)) AS AnualSales 
+FROM cte 
+GROUP BY SoldYear
+ORDER BY SoldYear 
+
+-- Number of sales for each employee, and disploying it by month in 2021 
+-- by using case statement 
+
+-- 1. 
+SELECT emp.firstName, emp.lastName, sls.soldDate, sls.salesAmount
+FROM sales AS sls 
+INNER JOIN employee AS emp 
+  ON sls.employeeId = emp.employeeId 
+WHERE sls.soldDate >= '2021-01-01' 
+AND sls.soldDate < '2022-01-01' 
+
+-- 2. 
+SELECT emp.firstName, emp.lastName, 
+  CASE WHEN strftime( '%m', soldDate) = '01'
+       THEN sls.salesAmount END AS JanSales,
+  CASE WHEN strftime( '%m', soldDate) = '02'
+       THEN sls.salesAmount END AS FebSales,
+  CASE WHEN strftime( '%m', soldDate) = '03'
+       THEN sls.salesAmount END AS MarSales,
+  CASE WHEN strftime( '%m', soldDate) = '04'
+       THEN sls.salesAmount END AS AprSales, 
+  CASE WHEN strftime( '%m', soldDate) = '05'
+       THEN sls.salesAmount END AS MaySales,
+  CASE WHEN strftime( '%m', soldDate) = '06'
+       THEN sls.salesAmount END AS JunSales, 
+  CASE WHEN strftime( '%m', soldDate) = '07'
+       THEN sls.salesAmount END AS JulSales,
+  CASE WHEN strftime( '%m', soldDate) = '08'
+       THEN sls.salesAmount END AS AogSales,
+  CASE WHEN strftime( '%m', soldDate) = '09'
+       THEN sls.salesAmount END AS SepSales,
+  CASE WHEN strftime( '%m', soldDate) = '10'
+       THEN sls.salesAmount END AS OctSales,
+  CASE WHEN strftime( '%m', soldDate) = '11'
+       THEN sls.salesAmount END AS NovSales,
+  CASE WHEN strftime( '%m', soldDate) = '12'
+       THEN sls.salesAmount END AS DecSales 
+FROM sales AS sls 
+INNER JOIN employee AS emp 
+  ON sls.employeeId = emp.employeeId 
+WHERE sls.soldDate >= '2021-01-01' 
+AND sls.soldDate < '2022-01-01' 
+GROUP BY emp.firstName, emp.lastName
+ORDER BY emp.lastName, emp.firstName
+
+-- purchase of electric cars, using subquery 
+
+SELECT *
+FROM sales AS sls 
+INNER JOIN inventory AS inv 
+  ON inv.inventoryId = sls.inventoryId;
+
+-- 2. model 
+SELECT * 
+FROM model 
+LIMIT 10;
+
+-- 3. 
+SELECT modelId 
+FROM model 
+WHERE EngineType = 'Electric' 
+
+-- final query. 
+
+SELECT sls.soldDate, salesAmount, inv.colour, inv.year
+FROM sales AS sls 
+INNER JOIN inventory AS inv 
+  ON inv.inventoryId = sls.inventoryId 
+WHERE inv.modelId IN (
+  SELECT modelId 
+FROM model 
+WHERE EngineType = 'Electric' 
+)
+
+--
